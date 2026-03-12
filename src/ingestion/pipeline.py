@@ -1,13 +1,11 @@
 import hashlib
-import time
-import requests
-from bs4 import BeautifulSoup
+import yaml
+from loguru import logger
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
-from loguru import logger
-import yaml
+from src.ingestion.scraper import DocScraper
 
 with open("config/config.yaml") as f:
     cfg = yaml.safe_load(f)
@@ -28,77 +26,85 @@ splitter = RecursiveCharacterTextSplitter(
     chunk_overlap=cfg["splitter"]["chunk_overlap"],
 )
 
-def scrape_url(url: str, content_selector: str = "main") -> str:
-    """Extrae texto limpio de una URL."""
-    headers = {"User-Agent": "Mozilla/5.0 (RAG Educational Bot)"}
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+scraper = DocScraper(delay=1.5, max_pages=50)
 
-        # Eliminar ruido
-        for tag in soup(["nav", "footer", "script", "style", "aside"]):
-            tag.decompose()
 
-        content = soup.select_one(content_selector) or soup.find("body")
-        return content.get_text(separator="\n", strip=True) if content else ""
-    except Exception as e:
-        logger.error(f"Error scraping {url}: {e}")
-        return ""
-
-def ingest_urls(urls: list[str], technology: str, content_selector: str = "main") -> dict:
-    """
-    Ingesta una lista de URLs en ChromaDB.
-    Retorna stats de la ingesta.
-    """
-    total_chunks = 0
-    errors = []
-
-    for url in urls:
-        logger.info(f"Ingesting: {url}")
-        text = scrape_url(url, content_selector)
-
-        if not text or len(text) < 100:
-            logger.warning(f"Skipping {url} — content too short or empty")
-            errors.append(url)
-            continue
-
-        # Detectar sección por el título de la página
-        try:
-            soup = BeautifulSoup(requests.get(url, timeout=30).text, "html.parser")
-            section = soup.find("h1").get_text(strip=True) if soup.find("h1") else ""
-        except Exception:
-            section = ""
-
-        chunks = splitter.split_text(text)
-        docs = []
-
+def _build_documents(pages: list[dict], technology: str) -> list[Document]:
+    """Convierte páginas scrapeadas en Documents con metadatos."""
+    docs = []
+    for page in pages:
+        chunks = splitter.split_text(page["text"])
         for i, chunk in enumerate(chunks):
             chunk_hash = hashlib.sha256(chunk.encode()).hexdigest()[:12]
-            docs.append(Document(
-                page_content=chunk,
-                metadata={
-                    "source_url": url,
-                    "technology": technology,
-                    "section": section,
-                    "chunk_id": f"{technology}_{chunk_hash}_{i}",
-                }
-            ))
-
-        # Upsert evitando duplicados por chunk_id
-        existing_ids = set(vectorstore.get()["ids"])
-        new_docs = [d for d in docs if d.metadata["chunk_id"] not in existing_ids]
-
-        if new_docs:
-            vectorstore.add_documents(
-                new_docs,
-                ids=[d.metadata["chunk_id"] for d in new_docs]
+            docs.append(
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "source_url": page["url"],
+                        "technology": technology,
+                        "section": page["title"],
+                        "chunk_id": f"{technology}_{chunk_hash}_{i}",
+                    },
+                )
             )
-            total_chunks += len(new_docs)
-            logger.success(f"Added {len(new_docs)} chunks from {url}")
-        else:
-            logger.info(f"No new chunks from {url} (already indexed)")
+    return docs
 
-        time.sleep(1.5)  # Rate limiting
 
-    return {"chunks_ingested": total_chunks, "errors": errors, "urls_processed": len(urls)}
+def _upsert_documents(docs: list[Document]) -> int:
+    """Inserta solo documentos nuevos. Retorna cantidad insertada."""
+    existing_ids = set(vectorstore.get()["ids"])
+    new_docs = [d for d in docs if d.metadata["chunk_id"] not in existing_ids]
+
+    if new_docs:
+        vectorstore.add_documents(
+            new_docs, ids=[d.metadata["chunk_id"] for d in new_docs]
+        )
+
+    return len(new_docs)
+
+
+def ingest_urls(
+    urls: list[str], technology: str, content_selector: str = "main"
+) -> dict:
+    """Ingesta una lista de URLs específicas (sin crawling)."""
+    all_pages = []
+    for url in urls:
+        page = scraper.scrape_page(url, content_selector)
+        if page["success"]:
+            all_pages.append(page)
+
+    docs = _build_documents(all_pages, technology)
+    chunks_added = _upsert_documents(docs)
+
+    logger.success(f"Ingested {chunks_added} new chunks for '{technology}'")
+    return {
+        "chunks_ingested": chunks_added,
+        "pages_processed": len(all_pages),
+        "errors": [p["url"] for p in all_pages if not p["success"]],
+    }
+
+
+def ingest_crawl(
+    start_url: str, technology: str, content_selector: str = "main", max_pages: int = 30
+) -> dict:
+    """Ingesta una sección completa de docs siguiendo links automáticamente."""
+    scraper.max_pages = max_pages
+    pages = scraper.crawl(start_url, content_selector)
+    docs = _build_documents(pages, technology)
+    chunks_added = _upsert_documents(docs)
+
+    logger.success(f"Crawl ingested {chunks_added} new chunks for '{technology}'")
+    return {
+        "chunks_ingested": chunks_added,
+        "pages_crawled": len(pages),
+    }
+
+
+def get_stats() -> dict:
+    """Retorna estadísticas del vectorstore actual."""
+    data = vectorstore.get()
+    technologies = {}
+    for meta in data["metadatas"]:
+        tech = meta.get("technology", "unknown")
+        technologies[tech] = technologies.get(tech, 0) + 1
+    return {"total_chunks": len(data["ids"]), "by_technology": technologies}
