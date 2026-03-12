@@ -8,6 +8,16 @@ from src.generation.chain import query
 from src.ingestion.pipeline import ingest_crawl, ingest_urls, get_stats
 import yaml
 
+def _format_latency(ms: int) -> str:
+    if ms < 1000:
+        return f"{ms}ms"
+    elif ms < 60000:
+        return f"{ms/1000:.1f}s"
+    else:
+        minutes = ms // 60000
+        seconds = (ms % 60000) / 1000
+        return f"{minutes}m {seconds:.0f}s"
+
 # ── Configuración de página ───────────────────────────────────────────
 st.set_page_config(
     page_title="DocRAG",
@@ -110,7 +120,7 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
 
         # Métricas inline
         col1, col2, col3 = st.columns(3)
-        col1.caption(f"⏱️ {latency}ms")
+        col1.caption(f"⏱️ {_format_latency(latency)}")
         col2.caption(f"📄 {len(result['sources'])} chunks")
         col3.caption(f"🤖 granite3.2")
 
