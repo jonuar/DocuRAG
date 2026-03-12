@@ -87,12 +87,9 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
         if msg["role"] == "assistant" and msg.get("sources"):
-            with st.expander(f"📎 {len(msg['sources'])} fuentes recuperadas"):
+            with st.expander(f"📎 {len(msg['sources'])} fuentes"):
                 for src in msg["sources"]:
-                    st.markdown(f"**{src['section'] or 'Sección'}**")
-                    st.caption(src["url"])
-                    st.text(src["preview"])
-                    st.divider()
+                    st.markdown(f"🔗 [{src['section'] or src['url']}]({src['url']})")
 
 # Input del usuario
 if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
@@ -119,12 +116,9 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
 
         # Fuentes expandibles
         if result["sources"]:
-            with st.expander(f"📎 Ver {len(result['sources'])} fuentes"):
+            with st.expander(f"📎 {len(result['sources'])} fuentes"):
                 for src in result["sources"]:
-                    st.markdown(f"**{src['section'] or 'Sección'}**")
-                    st.caption(src["url"])
-                    st.text(src["preview"])
-                    st.divider()
+                    st.markdown(f"🔗 [{src['section'] or src['url']}]({src['url']})")
 
     # Guardar en historial
     st.session_state.messages.append({

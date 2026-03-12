@@ -73,14 +73,18 @@ def query(question: str) -> dict:
     """Hace una pregunta al RAG y devuelve respuesta + fuentes."""
     docs = retriever.invoke(question)
     answer = chain.invoke(question)
-    return {
-        "answer": answer,
-        "sources": [
-            {
-                "url": doc.metadata.get("source_url", ""),
+
+    # Deduplicar fuentes por URL — varios chunks pueden venir de la misma página
+    seen_urls = set()
+    sources = []
+    for doc in docs:
+        url = doc.metadata.get("source_url", "")
+        if url not in seen_urls:
+            seen_urls.add(url)
+            sources.append({
+                "url": url,
+                "technology": doc.metadata.get("technology", ""),
                 "section": doc.metadata.get("section", ""),
-                "preview": doc.page_content[:150] + "..."
-            }
-            for doc in docs
-        ]
-    }
+            })
+
+    return {"answer": answer, "sources": sources}

@@ -30,7 +30,7 @@ def main():
 
     print(f"\n✅ Ingesta completada:")
     print(f"   Chunks ingresados: {result['chunks_ingested']}")
-    print(f"   URLs procesadas: {result['urls_processed']}")
+    print(f"   URLs procesadas: {result['pages_processed']}")
     if result["errors"]:
         print(f"   Errores en: {result['errors']}")
 
