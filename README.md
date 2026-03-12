@@ -34,12 +34,12 @@ Everything runs locally. No API keys, no cloud costs, no data leaving your machi
 │         Streamlit UI  ·  CLI scripts  ·  AG2 Agent          │
 └────────────────────────┬────────────────────────────────────┘
                          │
-         ┌───────────────▼──────────────────┐
+         ┌───────────────▼───────────────────┐
          │        RAG CHAIN (LCEL)           │
-         │   ConversationMemory              │
+         │   Conversation Memory             │
          └──────────┬───────────────┬────────┘
                     │               │
-       ┌────────────▼──┐    ┌───────▼──────────┐
+       ┌────────────▼───┐    ┌──────▼───────────┐
        │   RETRIEVER    │    │  LLM GENERATOR   │
        │   ChromaDB     │    │  Ollama          │
        │   MMR Search   │    │  Granite 3.2     │
