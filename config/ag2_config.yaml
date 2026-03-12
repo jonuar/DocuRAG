@@ -1,0 +1,9 @@
+llm_config:
+  config_list:
+    - model: granite3.2:latest
+      base_url: http://localhost:11434/v1
+      api_key: ollama
+      api_type: openai
+  temperature: 0.1
+  timeout: 300
+  cache_seed: null

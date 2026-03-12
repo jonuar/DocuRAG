@@ -8,6 +8,7 @@ from src.generation.chain import query
 from src.ingestion.pipeline import ingest_crawl, ingest_urls, get_stats
 import yaml
 
+
 def _format_latency(ms: int) -> str:
     if ms < 1000:
         return f"{ms}ms"
@@ -18,6 +19,7 @@ def _format_latency(ms: int) -> str:
         seconds = (ms % 60000) / 1000
         return f"{minutes}m {seconds:.0f}s"
 
+
 # ── Configuración de página ───────────────────────────────────────────
 st.set_page_config(
     page_title="DocRAG",
@@ -26,8 +28,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# YAML de configuración — se llama app_config, nunca sources
 with open("config/sources.yaml") as f:
-    sources = yaml.safe_load(f)
+    app_config = yaml.safe_load(f)
 
 # ── Sidebar ───────────────────────────────────────────────────────────
 with st.sidebar:
@@ -35,17 +38,21 @@ with st.sidebar:
     st.caption("Documentación técnica con IA local")
     st.divider()
 
-    # Selector de tecnología
-    tech_options = list(sources["technologies"].keys())
+    tech_options = list(app_config["technologies"].keys())
     selected_tech = st.selectbox(
         "Tecnología activa",
         tech_options,
-        format_func=lambda x: sources["technologies"][x]["name"]
+        format_func=lambda x: app_config["technologies"][x]["name"]
     )
 
     st.divider()
+    mode = st.radio(
+        "Modo de respuesta",
+        ["RAG directo", "Agente (AG2)"],
+        help="Agente hace múltiples consultas y razona antes de responder"
+    )
 
-    # Stats del vectorstore
+    st.divider()
     st.subheader("📊 Base de conocimiento")
     stats = get_stats()
     st.metric("Total chunks", stats["total_chunks"])
@@ -53,14 +60,12 @@ with st.sidebar:
         st.caption(f"  {tech}: {count} chunks")
 
     st.divider()
-
-    # Ingesta manual
     st.subheader("⚙️ Ingestar documentación")
     ingest_mode = st.radio("Modo", ["URLs del config", "URL personalizada"])
 
     if ingest_mode == "URLs del config":
         if st.button(f"Ingestar {selected_tech}", use_container_width=True):
-            tech_cfg = sources["technologies"][selected_tech]
+            tech_cfg = app_config["technologies"][selected_tech]
             selector = tech_cfg.get("selectors", {}).get("content", "main")
             with st.spinner(f"Ingesting {selected_tech}..."):
                 result = ingest_urls(
@@ -86,9 +91,8 @@ with st.sidebar:
         st.rerun()
 
 # ── Chat principal ────────────────────────────────────────────────────
-st.header(f"💬 Pregunta sobre {sources['technologies'][selected_tech]['name']}")
+st.header(f"💬 Pregunta sobre {app_config['technologies'][selected_tech]['name']}")
 
-# Inicializar historial
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -99,40 +103,48 @@ for msg in st.session_state.messages:
         if msg["role"] == "assistant" and msg.get("sources"):
             with st.expander(f"📎 {len(msg['sources'])} fuentes"):
                 for src in msg["sources"]:
-                    st.markdown(f"🔗 [{src['section'] or src['url']}]({src['url']})")
+                    label = src["section"] if src.get("section") else src["url"]
+                    st.markdown(f"🔗 [{label}]({src['url']})")
 
-# Input del usuario
+# Input
 if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
 
-    # Añadir mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
-    # Generar respuesta
     with st.chat_message("assistant"):
-        with st.spinner("Buscando en la documentación..."):
+        spinner_text = "Pensando..." if mode == "RAG directo" else "El agente está razonando..."
+        with st.spinner(spinner_text):
             start = time.time()
-            result = query(prompt)
+
+            if mode == "RAG directo":
+                rag_result = query(prompt)
+                answer = rag_result["answer"]
+                sources = rag_result["sources"]  # lista de dicts con url/section
+            else:
+                from src.agents.assistant_agent import run_agent
+                agent_question = f"Tecnología preferida: {selected_tech}\n\nPregunta: {prompt}"
+                answer = run_agent(agent_question)
+                sources = []  # el agente incluye fuentes en su texto
+
             latency = int((time.time() - start) * 1000)
 
-        st.write(result["answer"])
+        st.write(answer)
 
-        # Métricas inline
         col1, col2, col3 = st.columns(3)
         col1.caption(f"⏱️ {_format_latency(latency)}")
-        col2.caption(f"📄 {len(result['sources'])} chunks")
-        col3.caption(f"🤖 granite3.2")
+        col2.caption(f"🤖 {'granite3.2 + AG2' if mode == 'Agente (AG2)' else 'granite3.2'}")
+        col3.caption(f"📄 {len(sources)} chunks" if sources else "")
 
-        # Fuentes expandibles
-        if result["sources"]:
-            with st.expander(f"📎 {len(result['sources'])} fuentes"):
-                for src in result["sources"]:
-                    st.markdown(f"🔗 [{src['section'] or src['url']}]({src['url']})")
+        if sources:
+            with st.expander(f"📎 {len(sources)} fuentes"):
+                for src in sources:
+                    label = src["section"] if src.get("section") else src["url"]
+                    st.markdown(f"🔗 [{label}]({src['url']})")
 
-    # Guardar en historial
     st.session_state.messages.append({
         "role": "assistant",
-        "content": result["answer"],
-        "sources": result["sources"],
+        "content": answer,
+        "sources": sources,
     })
