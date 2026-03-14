@@ -17,6 +17,10 @@
 
 DocuRAG indexes official technical documentation and lets you have a conversation with it. Instead of searching through pages of docs, you ask a question in natural language and get a precise answer with a direct link to the source.
 
+<p align="center">
+  <img src="./docurag_screenshot.jpg" alt="DocuRAG screenshot" width="920">
+</p>
+
 It works in two modes:
 
 - **RAG direct** — your question hits ChromaDB, retrieves the most relevant chunks, and Granite 3.2 generates the answer. Fast and straightforward.
