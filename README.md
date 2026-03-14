@@ -28,30 +28,9 @@ Everything runs locally. No API keys, no cloud costs, no data leaving your machi
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     ENTRY LAYER                             │
-│         Streamlit UI  ·  CLI scripts  ·  AG2 Agent          │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-         ┌───────────────▼───────────────────┐
-         │        RAG CHAIN (LCEL)           │
-         │   Conversation Memory             │
-         └──────────┬───────────────┬────────┘
-                    │               │
-       ┌────────────▼───┐    ┌──────▼───────────┐
-       │   RETRIEVER    │    │  LLM GENERATOR   │
-       │   ChromaDB     │    │  Ollama          │
-       │   MMR Search   │    │  Granite 3.2     │
-       └────────────────┘    └──────────────────┘
-                │
-   ┌────────────▼──────────────┐
-   │      INGESTION LAYER      │
-   │  DocScraper (BS4)         │
-   │  RecursiveTextSplitter    │
-   │  nomic-embed-text         │
-   └───────────────────────────┘
-```
+<p align="center">
+  <img src="./rag_diagram.png" alt="RAG architecture diagram" width="920">
+</p>
 
 ### Key design decisions
 
@@ -232,7 +211,7 @@ python scripts/ingest.py your_tech
 
 ---
 
-## What I learned building this
+## What I implemented
 
 - Full RAG pipeline from scratch: ingestion, chunking strategy, embedding, MMR retrieval, generation
 - Why chunk quality matters more than model quality — garbage in, garbage out
