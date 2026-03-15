@@ -1,6 +1,6 @@
 # DocuRAG
 
-# DocuRAG 📚
+# DocuRAG
 
 > Conversational assistant that answers technical questions using official documentation as its only source of knowledge, running fully local, for free.
 

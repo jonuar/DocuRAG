@@ -1,6 +1,9 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import time
 import streamlit as st
@@ -23,7 +26,7 @@ def _format_latency(ms: int) -> str:
 # ── Configuración de página ───────────────────────────────────────────
 st.set_page_config(
     page_title="DocRAG",
-    page_icon="📚",
+    page_icon='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-file-ai"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M10 21h-3a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v4" /><path d="M14 21v-4a2 2 0 1 1 4 0v4" /><path d="M14 19h4" /><path d="M21 15v6" /></svg>',
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -34,7 +37,16 @@ with open("config/sources.yaml") as f:
 
 # ── Sidebar ───────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("📚 DocRAG")
+    # st.title('''DocRAG''')
+    st.markdown(
+        """
+    <span style="vertical-align:middle;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-file-ai"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M10 21h-3a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v4" /><path d="M14 21v-4a2 2 0 1 1 4 0v4" /><path d="M14 19h4" /><path d="M21 15v6" /></svg>
+      <b>DocuRAG</b>
+    </span>
+    """,
+        unsafe_allow_html=True,
+    )
     st.caption("Documentación técnica con IA local")
     st.divider()
 
@@ -42,18 +54,27 @@ with st.sidebar:
     selected_tech = st.selectbox(
         "Tecnología activa",
         tech_options,
-        format_func=lambda x: app_config["technologies"][x]["name"]
+        format_func=lambda x: app_config["technologies"][x]["name"],
     )
 
     st.divider()
     mode = st.radio(
         "Modo de respuesta",
         ["RAG directo", "Agente (AG2)"],
-        help="Agente hace múltiples consultas y razona antes de responder"
+        help="Agente hace múltiples consultas y razona antes de responder",
     )
 
     st.divider()
-    st.subheader("📊 Base de conocimiento")
+    # st.subheader("📊 Base de conocimiento")
+    st.markdown(
+    '''
+    <span style="vertical-align:middle;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-database-smile"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 14h.01" /><path d="M14 14h.01" /><path d="M10 17a3.5 3.5 0 0 0 4 0" /><path d="M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3" /><path d="M4 6v12c0 1.657 3.582 3 8 3s8 -1.343 8 -3v-12" /></svg>
+      <b>Base de conocimiento</b>
+    </span>
+    ''',
+    unsafe_allow_html=True
+)
     stats = get_stats()
     st.metric("Total chunks", stats["total_chunks"])
     for tech, count in stats["by_technology"].items():
@@ -83,7 +104,9 @@ with st.sidebar:
                     technology=selected_tech,
                     max_pages=20,
                 )
-            st.success(f"✅ {result['chunks_ingested']} chunks · {result['pages_crawled']} páginas")
+            st.success(
+                f"✅ {result['chunks_ingested']} chunks · {result['pages_crawled']} páginas"
+            )
 
     st.divider()
     if st.button("🗑️ Limpiar historial", use_container_width=True):
@@ -114,7 +137,9 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
         st.write(prompt)
 
     with st.chat_message("assistant"):
-        spinner_text = "Pensando..." if mode == "RAG directo" else "El agente está razonando..."
+        spinner_text = (
+            "Pensando..." if mode == "RAG directo" else "El agente está razonando..."
+        )
         with st.spinner(spinner_text):
             start = time.time()
 
@@ -124,7 +149,10 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
                 sources = rag_result["sources"]  # lista de dicts con url/section
             else:
                 from src.agents.assistant_agent import run_agent
-                agent_question = f"Tecnología preferida: {selected_tech}\n\nPregunta: {prompt}"
+
+                agent_question = (
+                    f"Tecnología preferida: {selected_tech}\n\nPregunta: {prompt}"
+                )
                 answer = run_agent(agent_question)
                 sources = []  # el agente incluye fuentes en su texto
 
@@ -134,7 +162,9 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
 
         col1, col2, col3 = st.columns(3)
         col1.caption(f"⏱️ {_format_latency(latency)}")
-        col2.caption(f"🤖 {'granite3.2 + AG2' if mode == 'Agente (AG2)' else 'granite3.2'}")
+        col2.caption(
+            f"🤖 {'granite3.2 + AG2' if mode == 'Agente (AG2)' else 'granite3.2'}"
+        )
         col3.caption(f"📄 {len(sources)} chunks" if sources else "")
 
         if sources:
@@ -143,8 +173,10 @@ if prompt := st.chat_input(f"Pregunta sobre {selected_tech}..."):
                     label = src["section"] if src.get("section") else src["url"]
                     st.markdown(f"🔗 [{label}]({src['url']})")
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": answer,
-        "sources": sources,
-    })
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": answer,
+            "sources": sources,
+        }
+    )
