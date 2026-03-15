@@ -1,28 +1,50 @@
-from langchain_ollama import OllamaLLM, OllamaEmbeddings
-from langchain_chroma import Chroma
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import os
+import yaml
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-import yaml
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
+from loguru import logger
 
-# Cargar config
 with open("config/config.yaml") as f:
     cfg = yaml.safe_load(f)
 
-# Modelos
-llm = OllamaLLM(
-    model=cfg["llm"]["model"],
-    base_url=cfg["llm"]["base_url"],
-    temperature=cfg["llm"]["temperature"],
-)
+# ── Embeddings — siempre Ollama en local, nomic via HF en cloud ───────
+IS_CLOUD = os.getenv("DEPLOYMENT") == "cloud"
 
-embeddings = OllamaEmbeddings(
-    model=cfg["embeddings"]["model"],
-    base_url=cfg["embeddings"]["base_url"],
-)
+if IS_CLOUD:
+    from langchain_huggingface import HuggingFaceEmbeddings
+    embeddings = HuggingFaceEmbeddings(
+        model_name="nomic-ai/nomic-embed-text-v1",
+        model_kwargs={"trust_remote_code": True},
+    )
+else:
+    embeddings = OllamaEmbeddings(
+        model=cfg["embeddings"]["model"],
+        base_url=cfg["embeddings"]["base_url"],
+    )
 
-# Vector store
+# ── LLM — Ollama local o HF Inference API en cloud ───────────────────
+if IS_CLOUD:
+    from langchain_huggingface import HuggingFaceEndpoint
+    llm = HuggingFaceEndpoint(
+        repo_id="ibm-granite/granite-3.2-8b-instruct",
+        huggingfacehub_api_token=os.getenv("HF_TOKEN"),
+        temperature=cfg["llm"]["temperature"],
+        max_new_tokens=cfg["llm"]["max_tokens"],
+    )
+    logger.info("Using HuggingFace Inference API (cloud mode)")
+else:
+    from langchain_ollama import OllamaLLM
+    llm = OllamaLLM(
+        model=cfg["llm"]["model"],
+        base_url=cfg["llm"]["base_url"],
+        temperature=cfg["llm"]["temperature"],
+    )
+    logger.info("Using Ollama local (local mode)")
+
+# ── Vector store ──────────────────────────────────────────────────────
 vectorstore = Chroma(
     collection_name=cfg["vectorstore"]["collection_name"],
     embedding_function=embeddings,
@@ -37,28 +59,29 @@ retriever = vectorstore.as_retriever(
     },
 )
 
-# Prompt
+# ── Prompt ────────────────────────────────────────────────────────────
 prompt = ChatPromptTemplate.from_template("""
-Eres un asistente experto en documentación técnica.
-Responde ÚNICAMENTE basándote en el contexto proporcionado.
-Si la información no está en el contexto, di exactamente: 
-"No encontré información sobre esto en la documentación indexada."
+You are an expert technical documentation assistant.
+Answer ONLY based on the context provided below.
+If the information is not in the context, say exactly:
+"I could not find information about this in the indexed documentation."
 
-Contexto:
+Always mention which documentation sections you used.
+
+Context:
 {context}
 
-Pregunta: {question}
+Question: {question}
 
-Respuesta (menciona las secciones de documentación que usaste):
+Answer:
 """)
 
 def format_docs(docs):
     return "\n\n---\n\n".join(
-        f"[Fuente: {doc.metadata.get('source_url', 'desconocida')}]\n{doc.page_content}"
+        f"[Source: {doc.metadata.get('source_url', 'unknown')}]\n{doc.page_content}"
         for doc in docs
     )
 
-# Chain principal
 chain = (
     {
         "context": retriever | format_docs,
@@ -70,11 +93,9 @@ chain = (
 )
 
 def query(question: str) -> dict:
-    """Hace una pregunta al RAG y devuelve respuesta + fuentes."""
     docs = retriever.invoke(question)
     answer = chain.invoke(question)
 
-    # Deduplicar fuentes por URL — varios chunks pueden venir de la misma página
     seen_urls = set()
     sources = []
     for doc in docs:
