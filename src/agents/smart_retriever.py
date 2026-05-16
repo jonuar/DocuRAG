@@ -107,15 +107,7 @@ def _synthesize_response(question: str, all_results: dict) -> str:
         # Respuesta simple de una tecnología
         tech = list(valid_results.keys())[0]
         data = valid_results[tech]
-        response = data["answer"]
-        
-        if data["sources"]:
-            response += f"\n\n**Fuentes ({tech.upper()}):**"
-            for src in data["sources"]:
-                label = src.get("section") or src["url"]
-                response += f"\n- {label}"
-        
-        return response
+        return data["answer"]
     
     else:
         # Respuesta comparativa / múltiples fuentes
@@ -123,12 +115,6 @@ def _synthesize_response(question: str, all_results: dict) -> str:
         
         for tech, data in valid_results.items():
             response += f"### {tech.upper()}\n{data['answer']}\n"
-            
-            if data["sources"]:
-                response += "\n**Fuentes:**\n"
-                for src in data["sources"]:
-                    label = src.get("section") or src["url"]
-                    response += f"- {label}\n"
             
             response += "\n---\n"
         

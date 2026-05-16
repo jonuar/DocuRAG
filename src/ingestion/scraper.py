@@ -11,6 +11,7 @@ def _clean_text(text: str) -> str:
     # Artefactos de encoding
     text = (text
             .replace("Â¶", "")
+            .replace("¶", "")
             .replace("Â", "")
             .replace("¶", "")
             .replace("â¦", "…")
@@ -27,6 +28,16 @@ def _clean_text(text: str) -> str:
     text = "\n".join(lines)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _clean_title(title: str) -> str:
+    return (
+        (title or "")
+        .replace("Ã‚Â¶", "")
+        .replace("Â¶", "")
+        .replace("¶", "")
+        .strip()
+    )
 
 
 def _is_noise_line(stripped: str) -> bool:
@@ -111,9 +122,9 @@ class DocScraper:
                 # Eliminar el ¶ del título antes de extraer texto
                 for a in h1.find_all("a", class_="headerlink"):
                     a.decompose()
-                title = h1.get_text(strip=True)
+                title = _clean_title(h1.get_text(strip=True))
             elif soup.find("title"):
-                title = soup.find("title").get_text(strip=True)
+                title = _clean_title(soup.find("title").get_text(strip=True))
 
             # 1. Colapsar bloques de código ANTES de eliminar nada
             _extract_code_blocks(soup)

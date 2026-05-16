@@ -66,7 +66,9 @@ Answer ONLY based on the context provided below.
 If the information is not in the context, say exactly:
 "I could not find information about this in the indexed documentation."
 
-Always mention which documentation sections you used.
+Do NOT mention which documentation sections you used.
+Do NOT include source URLs, citations, or any "sources consulted" list in the answer.
+The UI will show sources separately.
 
 Context:
 {context}
@@ -115,10 +117,11 @@ def query(question: str, technology: str | None = None) -> dict:
         url = doc.metadata.get("source_url", "")
         if url not in seen_urls:
             seen_urls.add(url)
+            section = (doc.metadata.get("section", "") or "").replace("¶", "").replace("Â¶", "").strip()
             sources.append({
                 "url": url,
                 "technology": doc.metadata.get("technology", ""),
-                "section": doc.metadata.get("section", ""),
+                "section": section,
             })
 
     return {"answer": answer, "sources": sources}
