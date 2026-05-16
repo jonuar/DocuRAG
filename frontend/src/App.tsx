@@ -26,31 +26,34 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function initialThread(): ChatThread {
+  const id = nowId();
+  return {
+    id,
+    title: "DocuRAG Chat",
+    last: "Ask about your indexed docs…",
+    updatedAt: Date.now(),
+    messages: [
+      {
+        id: nowId(),
+        role: "assistant",
+        content: "Hi. Ask a technical question and I’ll answer using your indexed documentation.",
+      },
+    ],
+  };
+}
+
 export default function App() {
   const [techs, setTechs] = useState<Technology[]>([]);
   const [tech, setTech] = useState<string | null>(null);
   const [mode, setMode] = useState<ChatMode>("rag");
 
   const [threads, setThreads] = useState<ChatThread[]>(() => {
-    const id = nowId();
-    return [
-      {
-        id,
-        title: "DocuRAG Chat",
-        last: "Ask about your indexed docs…",
-        updatedAt: Date.now(),
-        messages: [
-          {
-            id: nowId(),
-            role: "assistant",
-            content:
-              "Hi. Ask a technical question and I’ll answer using your indexed documentation.",
-          },
-        ],
-      },
-    ];
+    return [initialThread()];
   });
   const [activeThreadId, setActiveThreadId] = useState(() => threads[0].id);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
 
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeThreadId) ?? threads[0],
@@ -161,19 +164,51 @@ export default function App() {
         {
           id: nowId(),
           role: "assistant",
-          content:
-            "New chat ready. Pick a technology and ask your question.",
+          content: "New chat ready. Pick a technology and ask your question.",
         },
       ],
     };
     setThreads((prev) => [t, ...prev]);
     setActiveThreadId(id);
+    setRenameId(null);
+  }
+
+  function startRename(threadId: string) {
+    const t = threads.find((x) => x.id === threadId);
+    if (!t) return;
+    setRenameId(threadId);
+    setRenameValue(t.title);
+  }
+
+  function commitRename(threadId: string) {
+    const name = renameValue.trim();
+    if (!name) return;
+    setThreads((prev) => prev.map((t) => (t.id === threadId ? { ...t, title: name } : t)));
+    setRenameId(null);
+  }
+
+  function cancelRename() {
+    setRenameId(null);
+  }
+
+  function deleteThread(threadId: string) {
+    setThreads((prev) => {
+      const remaining = prev.filter((t) => t.id !== threadId);
+      if (remaining.length === 0) {
+        const fallback = initialThread();
+        setActiveThreadId(fallback.id);
+        return [fallback];
+      }
+      if (activeThreadId === threadId) setActiveThreadId(remaining[0].id);
+      return remaining;
+    });
+    if (renameId === threadId) setRenameId(null);
   }
 
   return (
     <div className="app-shell">
       <div className="chrome">
-        <div className="panel sidebar">
+        <div className="panel sidebar" aria-label="Sidebar">
           <div className="brand">
             <div className="avatar">D</div>
             <div>
@@ -186,38 +221,19 @@ export default function App() {
               <span className="dot" />
               Chats
             </button>
-            <button>
+            <button disabled title="Coming soon">
               <span className="dot" />
-              Explore
-            </button>
-            <button>
-              <span className="dot" />
-              Ingest
-            </button>
-            <button>
-              <span className="dot" />
-              Settings
+              Ingest (soon)
             </button>
           </div>
-          <div className="sidebar-footer">
-            <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer">
-              API Docs
-            </a>
-            <span>v0.1</span>
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-header">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div className="panel-title">Chats</div>
-              <span className="pill">Inbox</span>
-            </div>
-            <button className="send" style={{ padding: "8px 12px" }} onClick={newChat}>
-              + New Chat
+          <div className="sidebar-divider" />
+          <div className="chats-header">
+            <div className="panel-title">Your chats</div>
+            <button className="icon-btn" onClick={newChat} title="New chat" aria-label="New chat">
+              +
             </button>
           </div>
-          <div className="list" style={{ overflow: "auto" }}>
+          <div className="list" style={{ overflow: "auto", paddingTop: 8, flex: 1 }}>
             {threads.map((t) => (
               <div
                 key={t.id}
@@ -230,12 +246,59 @@ export default function App() {
                   {t.title.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="meta">
-                  <strong>{t.title}</strong>
-                  <span>{t.last || "—"}</span>
+                  {renameId === t.id ? (
+                    <input
+                      className="rename-input"
+                      value={renameValue}
+                      autoFocus
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitRename(t.id);
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          cancelRename();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => commitRename(t.id)}
+                      aria-label="Rename chat"
+                    />
+                  ) : (
+                    <>
+                      <strong>{t.title}</strong>
+                      <span>{t.last || "—"}</span>
+                    </>
+                  )}
                 </div>
                 <div className="time">{formatTime(t.updatedAt)}</div>
+                <div className="actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="icon-btn"
+                    title="Rename"
+                    aria-label="Rename"
+                    onClick={() => startRename(t.id)}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    className="icon-btn danger"
+                    title="Delete"
+                    aria-label="Delete"
+                    onClick={() => deleteThread(t.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             ))}
+          </div>
+          <div className="sidebar-footer">
+            <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer">
+              API Docs
+            </a>
+            <span>v0.1</span>
           </div>
         </div>
 
@@ -328,4 +391,3 @@ export default function App() {
     </div>
   );
 }
-
