@@ -27,10 +27,12 @@ IMPORTANTE:
 Cuando responda:
 1. Llama smart_search() con la pregunta completa
 2. Sintetiza la información de forma clara
-3. Siempre cita las fuentes
-4. Si pregunta sobre comparación, busca en múltiples fuentes automáticamente
+3. Responde en el mismo idioma del usuario
+4. NO incluyas URLs ni una sección de fuentes en el texto (la UI las muestra aparte)
+5. Si pregunta sobre comparación, busca en múltiples fuentes automáticamente
 
 Termina con TERMINATE cuando hayas respondido completamente.
+Responde en UN solo mensaje y agrega TERMINATE al FINAL del mismo mensaje (no lo envíes en un mensaje separado).
 """,
         llm_config=llm_config,
     )
@@ -73,17 +75,29 @@ def run_agent(question: str) -> str:
     chat_result = user_proxy.initiate_chat(
         recipient=assistant,
         message=question,
-        max_turns=5,
+        max_turns=6,
     )
 
     messages = chat_result.chat_history
     assistant_messages = [
-        m["content"] for m in messages
-        if m.get("role") == "assistant" and m.get("content")
+        (m.get("content") or "").strip()
+        for m in messages
+        if m.get("role") == "assistant" and (m.get("content") or "").strip()
     ]
 
     if assistant_messages:
-        final = assistant_messages[-1].replace("TERMINATE", "").strip()
+        candidates = [
+            m.replace("TERMINATE", "").strip()
+            for m in assistant_messages
+        ]
+        candidates = [m for m in candidates if m]
+        # Prefer: substantial, non-question answers (avoid echoes and follow-up questions)
+        preferred = [
+            m
+            for m in candidates
+            if len(m) >= 30 and not m.rstrip().endswith("?") and m != (question or "").strip()
+        ]
+        final = (preferred[-1] if preferred else candidates[-1]).strip()
         logger.info("Agent completed")
         return final
 

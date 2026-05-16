@@ -66,6 +66,9 @@ Answer ONLY based on the context provided below.
 If the information is not in the context, say exactly:
 "I could not find information about this in the indexed documentation."
 
+You MUST write your answer in the same language as the user's question.
+If the user's question is in Spanish, answer in Spanish.
+If the user's question is in English, answer in English.
 Do NOT mention which documentation sections you used.
 Do NOT include source URLs, citations, or any "sources consulted" list in the answer.
 The UI will show sources separately.

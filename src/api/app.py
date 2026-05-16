@@ -106,10 +106,10 @@ def chat(req: ChatRequest):
     start = time.time()
 
     if req.mode == "agent":
-        from src.agents.assistant_agent import run_agent
+        from src.agents.smart_retriever import smart_search
         
         # AG2 decide automáticamente qué búscar
-        answer = run_agent(req.message)
+        answer = smart_search(req.message)
         sources = []
     else:
         # RAG directo: si especifica technology, lo usa
@@ -118,8 +118,12 @@ def chat(req: ChatRequest):
         sources = result["sources"]
 
     latency_ms = int((time.time() - start) * 1000)
+    final_answer = (answer or "").strip()
+    if not final_answer:
+        final_answer = "No se pudo generar una respuesta (respuesta vacía)."
+
     return ChatResponse(
-        answer=answer,
+        answer=final_answer,
         sources=sources,
         latency_ms=latency_ms
     )
@@ -234,5 +238,3 @@ def ingest_technology(req: IngestRequest):
             "chunks_ingested": 0,
             "errors": [str(e)]
         }
-
-

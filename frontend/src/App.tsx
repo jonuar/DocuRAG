@@ -121,15 +121,15 @@ export default function App() {
           if (t.id !== activeThreadId) return t;
           const msgs = [...t.messages];
           const idx = msgs.findIndex((m) => m.id === placeholder.id);
-          if (idx >= 0) {
-            msgs[idx] = {
-              id: placeholder.id,
-              role: "assistant",
-              content: result.answer,
-              sources: result.sources,
-              meta: { latency_ms: result.latency_ms },
-            };
-          }
+          const assistantMsg: ChatMessage = {
+            id: placeholder.id,
+            role: "assistant",
+            content: result.answer,
+            sources: result.sources,
+            meta: { latency_ms: result.latency_ms },
+          };
+          if (idx >= 0) msgs[idx] = assistantMsg;
+          else msgs.push(assistantMsg);
           const title =
             t.title === "DocuRAG Chat" && message.length <= 42
               ? message
@@ -146,15 +146,15 @@ export default function App() {
           if (t.id !== activeThreadId) return t;
           const msgs = [...t.messages];
           const idx = msgs.findIndex((m) => m.id === placeholder.id);
-          if (idx >= 0) {
-            msgs[idx] = {
-              ...placeholder,
-              content: isAbort
-                ? "Request canceled."
-                : "Request failed. Make sure the API is running on http://localhost:8000.\n\n" +
-                  String(e?.message ?? e),
-            };
-          }
+          const errMsg: ChatMessage = {
+            ...placeholder,
+            content: isAbort
+              ? "Request canceled."
+              : "Request failed. Make sure the API is running on http://localhost:8000.\n\n" +
+                String(e?.message ?? e),
+          };
+          if (idx >= 0) msgs[idx] = errMsg;
+          else msgs.push(errMsg);
           return { ...t, messages: msgs };
         })
       );
