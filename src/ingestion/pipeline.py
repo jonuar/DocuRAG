@@ -100,6 +100,43 @@ def ingest_crawl(
     }
 
 
+def run_ingestion(technology: str) -> dict:
+    """
+    Ingesta documentación de una tecnología usando las URLs en sources.yaml.
+    
+    Args:
+        technology: Slug de la tecnología (ej: 'fastapi', 'python')
+    
+    Returns:
+        dict con chunks_ingested, pages_processed, errors
+    """
+    with open("config/sources.yaml") as f:
+        sources_config = yaml.safe_load(f) or {}
+    
+    tech_config = sources_config.get("technologies", {}).get(technology)
+    if not tech_config:
+        logger.error(f"Technology '{technology}' not found in sources.yaml")
+        return {
+            "chunks_ingested": 0,
+            "pages_processed": 0,
+            "errors": [f"Technology '{technology}' not found in sources.yaml"]
+        }
+    
+    urls = tech_config.get("docs_urls", [])
+    if not urls:
+        logger.error(f"No URLs configured for technology '{technology}'")
+        return {
+            "chunks_ingested": 0,
+            "pages_processed": 0,
+            "errors": [f"No URLs configured for '{technology}'"]
+        }
+    
+    selector = tech_config.get("selectors", {}).get("content", "main")
+    
+    logger.info(f"Starting ingestion for '{technology}' with {len(urls)} URLs")
+    return ingest_urls(urls, technology, content_selector=selector)
+
+
 def get_stats() -> dict:
     """Retorna estadísticas del vectorstore actual."""
     data = vectorstore.get()

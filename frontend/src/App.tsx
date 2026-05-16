@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMode, SourceItem, Technology } from "./api";
 import { fetchTechnologies, sendChat } from "./api";
+import { IngestPanel } from "./components/IngestPanel";
 
 type ChatMessage = {
   id: string;
@@ -44,6 +45,7 @@ function initialThread(): ChatThread {
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<"chat" | "ingest">("chat");
   const [techs, setTechs] = useState<Technology[]>([]);
   const [tech, setTech] = useState<string | null>(null);
   const [mode, setMode] = useState<ChatMode>("rag");
@@ -232,13 +234,19 @@ export default function App() {
             </div>
           </div>
           <div className="nav">
-            <button className="active">
+            <button 
+              className={activeTab === "chat" ? "active" : ""}
+              onClick={() => setActiveTab("chat")}
+            >
               <span className="dot" />
               Chats
             </button>
-            <button disabled title="Coming soon">
+            <button 
+              className={activeTab === "ingest" ? "active" : ""}
+              onClick={() => setActiveTab("ingest")}
+            >
               <span className="dot" />
-              Ingest (soon)
+              Ingest
             </button>
           </div>
           <div className="sidebar-divider" />
@@ -318,6 +326,8 @@ export default function App() {
         </div>
 
         <div className="panel chat">
+          {activeTab === "chat" ? (
+            <>
           <div className="panel-header">
             <div style={{ display: "grid", gap: 2 }}>
               <div className="panel-title">{activeThread.title}</div>
@@ -406,6 +416,10 @@ export default function App() {
               </div>
             ) : null}
           </div>
+            </>
+          ) : (
+            <IngestPanel />
+          )}
         </div>
       </div>
     </div>

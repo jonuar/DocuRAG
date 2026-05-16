@@ -18,7 +18,7 @@ cachetools==7.0.5
 certifi==2026.2.25
 charset-normalizer==3.4.5
 chroma-hnswlib==0.7.6
-chromadb==0.5.23
+chromadb==1.5.9
 click==8.3.1
 colorama==0.4.6
 dataclasses-json==0.6.7
@@ -101,6 +101,7 @@ propcache==0.4.1
 protobuf==6.33.5
 pyarrow==23.0.1
 pyautogen==0.9.0
+pybase64==1.4.3
 pydantic==2.12.5
 pydantic-settings==2.13.1
 pydantic_core==2.41.5
