@@ -64,6 +64,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>("");
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const inFlightAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -88,6 +89,9 @@ export default function App() {
     setBusy(true);
     setStatus("");
 
+    const ac = new AbortController();
+    inFlightAbortRef.current = ac;
+
     const userMsg: ChatMessage = { id: nowId(), role: "user", content: message };
     const placeholder: ChatMessage = {
       id: nowId(),
@@ -109,7 +113,7 @@ export default function App() {
     );
 
     try {
-      const result = await sendChat(message, tech, mode);
+      const result = await sendChat(message, tech, mode, ac.signal);
       setThreads((prev) =>
         prev.map((t) => {
           if (t.id !== activeThreadId) return t;
@@ -132,6 +136,9 @@ export default function App() {
         })
       );
     } catch (e: any) {
+      const isAbort =
+        e?.name === "AbortError" ||
+        String(e?.message ?? "").toLowerCase().includes("aborted");
       setThreads((prev) =>
         prev.map((t) => {
           if (t.id !== activeThreadId) return t;
@@ -140,9 +147,10 @@ export default function App() {
           if (idx >= 0) {
             msgs[idx] = {
               ...placeholder,
-              content:
-                "Request failed. Make sure the API is running on http://localhost:8000.\n\n" +
-                String(e?.message ?? e),
+              content: isAbort
+                ? "Request canceled."
+                : "Request failed. Make sure the API is running on http://localhost:8000.\n\n" +
+                  String(e?.message ?? e),
             };
           }
           return { ...t, messages: msgs };
@@ -150,7 +158,14 @@ export default function App() {
       );
     } finally {
       setBusy(false);
+      inFlightAbortRef.current = null;
     }
+  }
+
+  function onStop() {
+    inFlightAbortRef.current?.abort();
+    inFlightAbortRef.current = null;
+    setBusy(false);
   }
 
   function newChat() {
@@ -372,13 +387,18 @@ export default function App() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  void onSend();
+                  if (!busy) void onSend();
                 }
               }}
               disabled={busy}
             />
-            <button className="send" onClick={() => void onSend()} disabled={busy || !input.trim()}>
-              Send
+            <button
+              className="send"
+              onClick={() => (busy ? onStop() : void onSend())}
+              disabled={busy ? false : !input.trim()}
+              title={busy ? "Stop (cancel request)" : "Send"}
+            >
+              {busy ? "Stop" : "Send"}
             </button>
             {status ? (
               <div style={{ gridColumn: "1 / -1" }} className="subtle">
