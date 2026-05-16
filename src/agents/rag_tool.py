@@ -21,7 +21,7 @@ def query_docs(question: str, technology: str) -> str:
     logger.info(f"query_docs called | tech={technology} | q={question[:60]}")
 
     try:
-        result = query(question)
+        result = query(question, technology=technology)
         answer = result["answer"]
 
         # Añadir fuentes al final de la respuesta

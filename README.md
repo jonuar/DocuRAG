@@ -1,4 +1,3 @@
-# DocuRAG
 
 # DocuRAG
 
@@ -9,7 +8,8 @@
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-0.5.23-FF6B35?style=flat-square)
 ![Ollama](https://img.shields.io/badge/Ollama-Granite_3.2-000000?style=flat-square)
 ![AG2](https://img.shields.io/badge/AG2-0.9.0-5C4EE5?style=flat-square)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=flat-square&logo=react&logoColor=black)
+
 
 ---
 
@@ -18,7 +18,7 @@
 DocuRAG indexes official technical documentation and lets you have a conversation with it. Instead of searching through pages of docs, you ask a question in natural language and get a precise answer with a direct link to the source.
 
 <p align="center">
-  <img src="./docurag_screenshot.jpg" alt="DocuRAG screenshot" width="920">
+  <img src="./docurag_screensho.jpg" alt="DocuRAG screenshot" width="920">
 </p>
 
 It works in two modes:
@@ -33,7 +33,7 @@ Everything runs locally. No API keys, no cloud costs, no data leaving your machi
 ## Architecture
 
 <p align="center">
-  <img src="./rag_diagram.png" alt="RAG architecture diagram" width="920">
+  <img src="./rag_diagra.png" alt="RAG architecture diagram" width="920">
 </p>
 
 ### Key design decisions
@@ -60,7 +60,7 @@ Everything runs locally. No API keys, no cloud costs, no data leaving your machi
 | Embeddings | nomic-embed-text | latest |
 | Agents | AG2 (AutoGen 2) | 0.9.0 |
 | Web scraping | BeautifulSoup4 | 4.12.3 |
-| UI | Streamlit | 1.35+ |
+| UI | React.Js | 18.3.1 |
 | Config | python-dotenv + PyYAML | — |
 | Logging | Loguru | 0.7.3 |
 
@@ -114,6 +114,30 @@ streamlit run src/ui/streamlit_app.py
 ```
 
 Open [http://localhost:8501](http://localhost:8501).
+
+---
+
+## React chat UI (modern)
+
+This repo includes a React-based chat UI that talks to a small FastAPI API wrapper (so the UI can be decoupled from Streamlit).
+
+### 1) Run the API
+
+```bash
+uvicorn src.api.app:app --reload --port 8000
+```
+
+Open [http://localhost:8000/docs](http://localhost:8000/docs) to verify the API is up.
+
+### 2) Run the React UI
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
 
 ---
 

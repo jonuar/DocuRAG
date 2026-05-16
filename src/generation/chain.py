@@ -82,19 +82,32 @@ def format_docs(docs):
         for doc in docs
     )
 
-chain = (
-    {
-        "context": retriever | format_docs,
-        "question": RunnablePassthrough()
-    }
-    | prompt
-    | llm
-    | StrOutputParser()
-)
+def _get_retriever(technology: str | None):
+    if not technology:
+        return retriever
+    return vectorstore.as_retriever(
+        search_type="mmr",
+        search_kwargs={
+            "k": cfg["retrieval"]["k"],
+            "fetch_k": cfg["retrieval"]["fetch_k"],
+            "filter": {"technology": technology},
+        },
+    )
 
-def query(question: str) -> dict:
-    docs = retriever.invoke(question)
-    answer = chain.invoke(question)
+
+def query(question: str, technology: str | None = None) -> dict:
+    tech_retriever = _get_retriever(technology)
+    docs = tech_retriever.invoke(question)
+    runnable = (
+        {
+            "context": tech_retriever | format_docs,
+            "question": RunnablePassthrough(),
+        }
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+    answer = runnable.invoke(question)
 
     seen_urls = set()
     sources = []
