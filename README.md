@@ -1,5 +1,4 @@
 # DocuRAG
-
 Conversational assistant that answers technical questions using indexed official documentation as its only source of knowledge (local-first, no API keys required).
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
