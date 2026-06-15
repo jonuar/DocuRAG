@@ -16,7 +16,11 @@ Conversational assistant that answers technical questions using indexed official
 DocuRAG indexes official technical documentation and lets you chat with it. Instead of searching through pages of docs, you ask a question in natural language and get an answer with sources shown separately in the UI.
 
 <p align="center">
-  <img src="./docurag_screenshot.jpg" alt="DocuRAG screenshot" width="920">
+  <img src="./docurag_screenshot.jpg" alt="DocuRAG chat section screenshot" width="920">
+</p>
+
+<p align="center">
+  <img src="./docurag_screenshot_ingest.jpg" alt="DocuRAG ingest section screenshot" width="920">
 </p>
 
 ### Modes

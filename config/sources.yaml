@@ -9,6 +9,12 @@ technologies:
     name: FastAPI
     selectors:
       content: article
+  langchain:
+    docs_urls:
+    - https://docs.langchain.com/oss/python/langchain/quickstart
+    name: Langchain Quickstart
+    selectors:
+      content: article
   python:
     docs_urls:
     - https://docs.python.org/3/tutorial/introduction.html
